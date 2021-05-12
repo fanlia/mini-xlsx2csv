@@ -15,6 +15,7 @@ def zipfileopen(zipfile, filename):
 def parse_workbook(xlsxhandle):
     filehandle = zipfileopen(xlsxhandle, 'xl/workbook.xml')
     workbook_dom = xml.dom.minidom.parse(filehandle)
+    filehandle.close()
 
     workbookpr_dom = workbook_dom.getElementsByTagName('workbookPr')   
     date1904 = len(workbookpr_dom) > 0 and workbookpr_dom[0].getAttribute('date1904') != 'false'
@@ -34,6 +35,7 @@ def parse_styles(xlsxhandle):
 
     filehandle = zipfileopen(xlsxhandle, 'xl/styles.xml')
     styles_dom = xml.dom.minidom.parse(filehandle)
+    filehandle.close()
 
     numFmt_dom_list = styles_dom.getElementsByTagName('numFmt')
     cellXfs_dom_list = styles_dom.getElementsByTagName('cellXfs')
@@ -74,6 +76,7 @@ class SharedStrings:
         parser.EndElementHandler = self.end_element
         parser.CharacterDataHandler = self.char_data
         parser.ParseFile(filehandle)
+        filehandle.close()
 
         return self.strings
 
@@ -133,14 +136,15 @@ class Sheet:
 
         self.row = {}
 
-    def parse(self, xlsxhandle):
-        filehandle = zipfileopen(xlsxhandle, 'xl/worksheets/sheet1.xml')
+    def parse(self, xlsxhandle, sheetindex=1):
+        filehandle = zipfileopen(xlsxhandle, 'xl/worksheets/sheet' + str(sheetindex) + '.xml')
         parser = xml.parsers.expat.ParserCreate()
         
         parser.StartElementHandler = self.start_element
         parser.EndElementHandler = self.end_element
         parser.CharacterDataHandler = self.char_data
         parser.ParseFile(filehandle)
+        filehandle.close()
 
     def start_element(self, name, attrs):
         if name == 'row':
@@ -250,12 +254,24 @@ def format_by_numFmtId(cell, numFmtId, numFmts, date1904):
 
     return v_text
 
+def get_sheetindex_by_name(sheets, sheetname):
+    if sheetname:
+        for sheet in sheets:
+            if sheet['name'] == sheetname:
+                return sheet['index']
+    return 1
+
 def xlsx2csv(options):
     xlsxhandle = zipfile.ZipFile(options.xlsxfile)
 
     workbook = parse_workbook(xlsxhandle)
+    print(workbook)
     styles = parse_styles(xlsxhandle)
     sharedstrings = SharedStrings().parse(xlsxhandle)
+
+    sheetindex = get_sheetindex_by_name(workbook['sheets'], options.sheetname)
+
+    lines = 0
 
     writer = None
     
@@ -273,15 +289,17 @@ def xlsx2csv(options):
         return cell.v_text
 
     def row_handler(row):
-        nonlocal writer
+        nonlocal writer, lines
         if writer is None:
             writer = csv.DictWriter(sys.stdout, row.keys())
 
-        writer.writerow(row)
-        #print(row)
+        if options.limit is None or lines <= options.limit:
+            writer.writerow(row)
+
+        lines = lines + 1
 
     sheet = Sheet(cell_handler, row_handler)
-    sheet.parse(xlsxhandle)
+    sheet.parse(xlsxhandle, sheetindex)
     
     xlsxhandle.close()
 

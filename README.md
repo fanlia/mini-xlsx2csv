@@ -1,6 +1,23 @@
 # mini-xlsx2csv
 
-just a mini verson of then great work from https://github.com/dilshod/xlsx2csv
+just a mini verson of the great work from https://github.com/dilshod/xlsx2csv
+
+## usage
+
+```sh
+usage: mini-xlsx2csv.py [-h] [--limit LIMIT] [--sheetname SHEETNAME] xlsxfile
+
+xlsx as csv to stdout
+
+positional arguments:
+  xlsxfile              xlsx file path
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --limit LIMIT         rows to write
+  --sheetname SHEETNAME
+                        sheet name to convert
+```
 
 ## why
 
