@@ -6,6 +6,9 @@ import xml.dom.minidom
 import xml.parsers.expat
 import argparse
 
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
 def zipfileopen(zipfile, filename):
     try:
         return zipfile.open(filename)
@@ -203,10 +206,6 @@ FormatTypes = {
     '0.00000': 'float',
 }
 
-def is_v_text_a_date(v_text):
-    if re.match('^\d+(\.\d+)?$', v_text): return True
-    return False
-
 def is_date(v_text, formatCode):
     if re.match('^\d+(\.\d+)?$', v_text):
         if re.match(".*yyyy.*", formatCode): return True
@@ -219,11 +218,8 @@ def format_by_numFmtId(cell, numFmtId, numFmts, date1904):
     formatType = None
         
     if formatCode is None:
-        if is_v_text_a_date(v_text):
-            formatType = 'date'
-        else:
-            print('formatCode not found', numFmtId, v_text)
-            return v_text
+        eprint('formatCode not found', numFmtId, v_text)
+        return v_text
     else:
         formatType = FormatTypes.get(formatCode)
 
@@ -231,7 +227,7 @@ def format_by_numFmtId(cell, numFmtId, numFmts, date1904):
         if is_date(v_text, formatCode):
             formatType = 'date'
         else:
-            print('formatType not found', formatCode, v_text)
+            eprint('formatType not found', formatCode, v_text)
             return v_text
 
     if formatType == 'date':
