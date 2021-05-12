@@ -164,13 +164,15 @@ class Sheet:
             self.in_c = False
 
             if self.c_r:
-                cell = self.cell_handler(Cell({
+                cell = Cell({
                     'c_r': self.c_r,
                     's': self.c_s,
                     't': self.c_t,
                     'v_text': self.v_text,
-                }))
-                self.row[self.c_r] = cell
+                })
+                value = self.cell_handler(cell)
+                key = self.c_r[:len(self.c_r) - len(self.row_r)]
+                self.row[key] = value
         elif name == 'row' and self.in_row:
             self.in_row = False
             self.row_handler(self.row)
@@ -254,6 +256,8 @@ def xlsx2csv(options):
     workbook = parse_workbook(xlsxhandle)
     styles = parse_styles(xlsxhandle)
     sharedstrings = SharedStrings().parse(xlsxhandle)
+
+    writer = None
     
     def cell_handler(cell):
         if cell.t == 's':
@@ -269,7 +273,12 @@ def xlsx2csv(options):
         return cell.v_text
 
     def row_handler(row):
-        print(row)
+        nonlocal writer
+        if writer is None:
+            writer = csv.DictWriter(sys.stdout, row.keys())
+
+        writer.writerow(row)
+        #print(row)
 
     sheet = Sheet(cell_handler, row_handler)
     sheet.parse(xlsxhandle)
