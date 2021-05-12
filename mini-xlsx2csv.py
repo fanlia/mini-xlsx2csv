@@ -265,7 +265,6 @@ def xlsx2csv(options):
     xlsxhandle = zipfile.ZipFile(options.xlsxfile)
 
     workbook = parse_workbook(xlsxhandle)
-    print(workbook)
     styles = parse_styles(xlsxhandle)
     sharedstrings = SharedStrings().parse(xlsxhandle)
 
