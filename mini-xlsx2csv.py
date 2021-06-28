@@ -20,7 +20,7 @@ def parse_workbook(xlsxhandle):
     workbook_dom = xml.dom.minidom.parse(filehandle)
     filehandle.close()
 
-    workbookpr_dom = workbook_dom.getElementsByTagName('workbookPr')   
+    workbookpr_dom = workbook_dom.getElementsByTagName('workbookPr')
     date1904 = len(workbookpr_dom) > 0 and workbookpr_dom[0].getAttribute('date1904') != 'false'
 
     sheet_dom_list = workbook_dom.getElementsByTagName('sheet')
@@ -42,11 +42,11 @@ def parse_styles(xlsxhandle):
 
     numFmt_dom_list = styles_dom.getElementsByTagName('numFmt')
     cellXfs_dom_list = styles_dom.getElementsByTagName('cellXfs')
-    xf_dom_list = cellXfs_dom_list[0].getElementsByTagName('xf') 
-    
+    xf_dom_list = cellXfs_dom_list[0].getElementsByTagName('xf')
+
     numFmts = {}
     cellXfs = []
-    
+
     for numFmt_dom in numFmt_dom_list:
         numFmtId = numFmt_dom.getAttribute('numFmtId')
         formatCode = numFmt_dom.getAttribute('formatCode').lower().replace('\\', '')
@@ -72,9 +72,9 @@ class SharedStrings:
         filehandle = zipfileopen(xlsxhandle, 'xl/sharedStrings.xml')
         if filehandle is None:
             return self.strings
-        
+
         parser = xml.parsers.expat.ParserCreate()
-        
+
         parser.StartElementHandler = self.start_element
         parser.EndElementHandler = self.end_element
         parser.CharacterDataHandler = self.char_data
@@ -142,7 +142,7 @@ class Sheet:
     def parse(self, xlsxhandle, sheetindex=1):
         filehandle = zipfileopen(xlsxhandle, 'xl/worksheets/sheet' + str(sheetindex) + '.xml')
         parser = xml.parsers.expat.ParserCreate()
-        
+
         parser.StartElementHandler = self.start_element
         parser.EndElementHandler = self.end_element
         parser.CharacterDataHandler = self.char_data
@@ -211,14 +211,13 @@ def is_date(v_text, formatCode):
         if re.match(".*yyyy.*", formatCode): return True
 
     return False
-                
+
 def format_by_numFmtId(cell, numFmtId, numFmts, date1904):
     v_text = cell.v_text
     formatCode = numFmts.get(numFmtId) or StandardNumFmts.get(numFmtId)
     formatType = None
-        
+
     if formatCode is None:
-        eprint('formatCode not found', numFmtId, v_text)
         return v_text
     else:
         formatType = FormatTypes.get(formatCode)
@@ -238,12 +237,12 @@ def format_by_numFmtId(cell, numFmtId, numFmts, date1904):
             date = datetime.datetime(1899, 12, 30) + datetime.timedelta(float(v_text))
 
         return date.strftime('%Y-%m-%d %H:%M:%S')
-    
+
     elif formatType == 'time':
         t = int(round((float(v_text) % 1) * 24 * 60 * 60, 6))
         d = datetime.time(int((t // 3600) % 24), int((t // 60) % 60), int(t % 60))
         return d.strftime('%H:%M:%S')
-    
+
     elif formatType == 'float':
         l = len(formatCode.split('.')[1])
         return ('%.' + str(l) + 'f') % float(v_text)
@@ -269,7 +268,7 @@ def xlsx2csv(options):
     lines = 0
 
     writer = None
-    
+
     def cell_handler(cell):
         if cell.t == 's':
            return sharedstrings[int(cell.v_text)]
@@ -284,6 +283,9 @@ def xlsx2csv(options):
         return cell.v_text
 
     def row_handler(row):
+        if options.field:
+            row = { key:value for (key, value) in row.items() if key in options.field }
+
         nonlocal writer, lines
         if writer is None:
             writer = csv.DictWriter(sys.stdout, row.keys())
@@ -295,7 +297,7 @@ def xlsx2csv(options):
 
     sheet = Sheet(cell_handler, row_handler)
     sheet.parse(xlsxhandle, sheetindex)
-    
+
     xlsxhandle.close()
 
 if __name__ == '__main__':
@@ -303,6 +305,7 @@ if __name__ == '__main__':
     parser.add_argument('xlsxfile', help='xlsx file path')
     parser.add_argument('--limit', dest='limit', help='rows to write', type=int, default=None)
     parser.add_argument('--sheetname', dest='sheetname', help='sheet name to convert', default=None)
+    parser.add_argument('--field', dest='field', help='field to extract', action='append', default=None)
     options = parser.parse_args()
 
     xlsx2csv(options)
